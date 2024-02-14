@@ -1,0 +1,18 @@
+#!/bin/sh
+
+macFind="$(cat map307 | grep $1 | cut -d, -f4)"
+
+
+# TODO find IP if no then everything
+
+if [ ! -z "$macFind"  ]; then
+	for record in $(/usr/sbin/arp -an | sed "s/ /,/g;")
+	do
+		echo $record | grep "$(echo "$macFind" | cut -d, -f4)" | grep -o -e "([^)]*)" | sed -e "s/^.//; s/.$//;"
+	done
+else
+	echo "Нет такого!" >&2
+	exit 24
+fi
+
+

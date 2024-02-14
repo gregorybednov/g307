@@ -1,0 +1,26 @@
+#!/bin/sh
+
+user="student"
+ips=$(./g307iplist | cut -d: -f2)
+
+keys() {
+	for i in ${ips}
+	do
+		if ping -c 1 -W 5 "${i}"; then ssh-copy-id "${user}@${i}"; fi
+	done
+}
+
+if test $# -ne "1"; then
+	printf "1 argument needed:\n\t1) and script filename"
+	exit
+else
+	shfile="$1"
+fi
+
+keys
+#sed -e "${password_phrase}" -i "${shfile}"
+for i in $ips; do
+	#echo $i
+	scp -o ConnectTimeout=5 "${shfile}" "${user}@${i}:/home/${user}" && ssh "${user}@${i}" "chmod +x /home/${user}/${shfile}" && ssh "${user}@$i" "/home/${user}/${shfile}" > "$(basename "${i}")_log" && ssh "${user}@$i" "rm /home/${user}/${shfile}" 
+done
+wait

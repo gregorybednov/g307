@@ -1,0 +1,4 @@
+<?xml-stylesheet href="chrome://global/locale/intl.css" type="text/css"?><parsererror xmlns="http://www.mozilla.org/newlayout/xml/parsererror.xml">XML Parsing Error: not well-formed
+Location: http://10.0.174.12:30000/datamodeler.svg
+Line Number 10, Column 2:<sourcetext>&lt;/svg&gt;
+-^</sourcetext></parsererror>

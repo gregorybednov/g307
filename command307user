@@ -1,0 +1,86 @@
+#!/bin/sh
+
+user="student"
+hosts=1
+share_keys=1
+interactive=1
+while true; do
+#	if test $# -lt 1
+#	then
+#		echo "error: too few arguments"
+#		exit 1
+#	fi
+
+	case "$1" in
+		"--user" | "-u" )
+
+			if test "$#" -lt 1
+			then
+				echo "error: USERNAME expected"
+				exit 2
+			fi
+			user="$2"
+			shift 2
+			;;
+		
+		"--help" )
+			echo "TODO help"
+			exit 0
+			;;
+
+		"--hosts" | "-h" )
+			hosts=0
+			shift
+			;;			
+		"--keys" | "-k" )
+			share_keys=0
+			shift
+			;;
+
+		"--interactive")
+			interactive=0
+			shift
+			;;
+		* ) 
+			break
+			;;
+	esac
+
+
+done
+
+ips=$(./g307iplist | cut -d: -f2)
+
+if test $share_keys -eq 0
+then
+	for i in $ips
+	do
+		if ping -c 1 -W 5 "${i}"
+		then
+			ssh-copy-id -p 2222 "${user}@${i}"
+		fi
+	done
+	echo "Keys shared"
+	exit 0
+fi
+
+sshcommand="$*"
+echo "$sshcommand\n"
+if test $interactive -eq 0
+then
+	hosts=0
+	sshcommand=""
+fi
+
+for i in $ips
+do
+	if test $hosts -eq 0
+	then
+		echo $i
+		ssh -o "StrictHostKeyChecking no" -o ConnectTimeout=10 -p 2222 "${user}@${i}" "$sshcommand"
+	else
+		ssh -o "StrictHostKeyChecking no" -o ConnectTimeout=10 -p 2222 "${user}@${i}" "$sshcommand" &
+	fi
+
+done
+wait

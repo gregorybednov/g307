@@ -1,0 +1,7 @@
+#!/bin/sh
+for comp in $(grep "$*" map307 | cut -f1 -d',')
+do
+	#ips="$(./findIPs $comp | sed -n "1p")"
+	echo "${comp}:$(./findIPs "${comp}")"
+	#ssh student@"$ips"
+done

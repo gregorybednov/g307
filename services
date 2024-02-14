@@ -1,0 +1,5 @@
+systemctl --user start udiskie.service
+systemctl --user enable udiskie.service
+systemctl --user start mysqld.service
+systemctl --user enable mysqld.service
+
