@@ -1,16 +1,30 @@
 { config, pkgs, stdenv, ... }:
 let
-  #	server = "192.168.0.20:30000";
-  #	nixgl = import <nixgl> {};
+	localDir = "${config.home.homeDirectory}/.local";
+	localRun = "${localDir}/run";
+	dropbear_init = (pkgs.writeShellScriptBin "dropbear_init"
+''
+if [ ! -e $HOME/.config/dropbear ]; then mkdir -p $HOME/.config/dropbear; fi
+if [ ! -e $HOME/.config/dropbear/dropbear_rsa_host_key ]; then ${pkgs.dropbear}/bin/dropbearkey -t rsa -f $HOME/.config/dropbear/dropbear_rsa_host_key; fi
+'');
+	mysqld_init = (pkgs.writeShellScriptBin "mysqld_init_table"
+''
+mkdir -p ${config.home.homeDirectory}/.local ${localRun} ${localDir}/lib ${localDir}/lib/mysql
+if [ ! -f ${localRun}/mysqld.sock ]; then
+	${pkgs.mysql80}/bin/mysqld --datadir=${localDir}/lib/mysql --pid-file=${localRun}/mysqld.pid --socket=${localRun}/mysqld.sock
+	rm -rf ${localDir}/lib/mysql
+	${pkgs.mysql80}/bin/mysqld --datadir=${localDir}/lib/mysql --pid-file=${localRun}/mysqld/mysqld.pid --socket=${localRun}/mysqld/mysqld.sock --port=3306 --initialize-insecure --user=root
+fi
+'');
 	astra = ! (builtins.isNull (builtins.match ".*astra.*" (builtins.readFile (pkgs.runCommandNoCC "hello" {} "uname -a > $out"))));
 in {
-  imports = [ ./mysqld.nix ./desktop.nix ];
+  imports = [ ./desktop.nix ];
   home.username = "student";
   home.homeDirectory = "/home/${config.home.username}";
   home.stateVersion = "23.11";
   
   gtk = {
-#    enable = ! astra;
+    enable = ! astra;
     theme = {
       name = "orchis-theme";
       package = pkgs.orchis-theme;
@@ -55,12 +69,15 @@ in {
     liberation_ttf
     libreoffice
     mysql80
+    (pkgs.callPackage ./simintech.nix {})
     dbeaver
-    staruml
+    mysql-workbench
+   # staruml
     archi
     plantuml
     jetbrains.pycharm-community
     jetbrains.idea-community
+    unityhub
     jdk
     kotlin
     stm32cubemx
@@ -161,7 +178,7 @@ in {
 
 (use-package wakib-keys :straight t
   :init
-  (wakib-keys 1))
+  (wakib-keys 1))keys
 
 (use-package json-mode :straight t :mode "\\.json\\'")
 (use-package nix-mode :straight t :mode "\\.nix\\'")
@@ -264,20 +281,12 @@ in {
 ;;; init.el ends here
 '';
 
-  home.file.".emacs.d/early-init.el".text = ''
-(setq inhibit-startup-message t)
-(setq package-enable-at-startup nil)
-  '';
+  home.file.".emacs.d/early-init.el".text = "(setq inhibit-startup-message t)(setq package-enable-at-startup nil)";
 
   home.file.".config/shepherd/init.scm".text = ''
-;; init.scm -- default shepherd configuration file.
-
 (define (make-service . args)
   (apply make <service> args))
 
-;; Services known to shepherd:
-;; Add new services (defined using 'make <service>') to shepherd here by
-;; providing them as arguments to 'register-services'.
 (register-services
   (make-service
     #:docstring "MCron"
@@ -286,11 +295,37 @@ in {
     #:stop (make-kill-destructor)
     #:respawn? #t)
   (make-service
+   #:docstring "Prepare dropbear"
+   #:provides '(dropbear-init)
+   #:start (make-forkexec-constructor '("${dropbear_init}"))
+   #:stop (make-kill-destructor)
+   #:one-shot? #t)
+  (make-service
    #:docstring "Dropbear user SSHD"
    #:provides '(dropbear)
+   #:requirement '(dropbear-init)
    #:start (make-forkexec-constructor '("${pkgs.dropbear}/bin/dropbear" "-E" "-F" "-r" "${config.home.homeDirectory}/.config/dropbear/dropbear_rsa_host_key" "-p" "2222"))
    #:stop (make-kill-destructor)
    #:respawn? #t)
+  (make-service
+    #:docstring "MySQL init"
+    #:provides '(mysqld-init)
+    #:start (make-forkexec-constructor '("${mysqld_init}"))
+    #:stop (make-kill-destructor)
+    #:one-shot? #t)
+  (make-service
+    #:docstring "MySQL"
+    #:requires '(mysqld-init)
+    #:provides '(mysqld)
+    #:start (make-forkexec-constructor '("${pkgs.mysql80}/bin/mysqld" "--datadir=${config.home.homeDirectory}/.local/lib/mysql" "--pid-file=${config.home.homeDirectory}/.local/run/mysqld.pid" "--socket=${config.home.homeDirectory}/.local/run/mysqld.sock" "--port=3306"))
+    #:stop (make-kill-destructor)
+    #:respawn? #t)
+  (make-service
+    #:docstring "Udiskie"
+    #:provides '(udiskie)
+    #:start (make-forkexec-constructor '("${pkgs.udiskie}/bin/udiskie"))
+    #:stop (make-kill-destructor)
+    #:respawn? #t)
   (make-service
     #:docstring "Emacs daemon"
     #:provides '(emacs)
@@ -298,14 +333,14 @@ in {
     #:stop (make-kill-destructor)
     #:respawn? #t))
 
-
-;; Send shepherd into the background
 (action 'shepherd 'daemonize)
-
-;; Services to start when shepherd starts:
-;; Add the name of each service that should be started to the list
-;; below passed to 'for-each'.
-(for-each start '(emacs dropbear))  
+(for-each start '(emacs dropbear mysqld udiskie))  
+'';
+home.file.".my.cnf".text = ''
+[client]
+port = 3306
+socket = ${config.home.homeDirectory}/.local/run/mysqld.sock
+user = root
 '';
 
   home.file.".ssh/authorized_keys".text = ''
@@ -319,13 +354,8 @@ ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCyBYo/E/FkFZVABzMixLS2TWaipfN5T24y8f+E6Px1
         fi
     fi
 
-    if [ -d "$HOME/bin" ] ; then
-        PATH="$HOME/bin:$PATH"
-    fi
-
-    if [ -d "$HOME/.local/bin" ] ; then
-        PATH="$HOME/.local/bin:$PATH"
-    fi
+    if [ -d "$HOME/bin" ]; then PATH="$HOME/bin:$PATH"; fi
+    if [ -d "$HOME/.local/bin" ]; then PATH="$HOME/.local/bin:$PATH"; fi
 
     #export PATH="$PATH:/home/student/.local/share/JetBrains/Toolbox/scripts"
 
@@ -338,31 +368,16 @@ ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCyBYo/E/FkFZVABzMixLS2TWaipfN5T24y8f+E6Px1
             fi
     fi
 
-    . "$HOME/.nix-profile/etc/profile.d/hm-session-vars.sh"
-    export XDG_DATA_DIRS="$HOME/.nix-profile/share:$XDG_DATA_DIRS"
-    export LOCALE_ARCHIVE="/usr/lib/locale/locale-archive";
+. "$HOME/.nix-profile/etc/profile.d/hm-session-vars.sh"
+export XDG_DATA_DIRS="$HOME/.nix-profile/share"
+export LOCALE_ARCHIVE="/usr/lib/locale/locale-archive";
 
-if [ ! -e $HOME/.config/dropbear ]
-then
-    mkdir -p $HOME/.config/dropbear
-fi
+pidof -x shepherd || ${pkgs.gnu-shepherd}/bin/shepherd
 
-if [ ! -e $HOME/.config/dropbear/dropbear_rsa_host_key ]
-then
-${pkgs.dropbear}/bin/dropbearkey -t rsa -f $HOME/.config/dropbear/dropbear_rsa_host_key
-fi
-
-${pkgs.dropbear}/bin/dropbear -r "$HOME/.config/dropbear/dropbear_rsa_host_key" -P "$HOME/.config/dropbear/dropbear.pid" -p 2222 -B -E 2>/dev/null &
-    
-    if [[ -z $DISPLAY ]] && [[ $(tty) = /dev/tty1 ]]; then
-    startx
-    fi
-    	'';
-
+if [[ -z $DISPLAY ]] && [[ $(tty) = /dev/tty1 ]]; then startx; fi
+'';
   
-  
-  home.sessionVariables.LOCALE_ARCHIVE =
-    "${pkgs.glibcLocales}/lib/locale/locale-archive";
+  home.sessionVariables.LOCALE_ARCHIVE = "${pkgs.glibcLocales}/lib/locale/locale-archive";
   programs.home-manager.enable = true;
 }
 

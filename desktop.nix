@@ -1,5 +1,6 @@
 {config, pkgs, ...}:
 let
+	jgmenu_custom = (pkgs.callPackage ./jgmenu.nix {});
 	folderIcon = (pkgs.writeText "folderIcon.svg"
 ''
 <svg height="512" viewBox="0 0 640 640" width="512" xmlns="http://www.w3.org/2000/svg"><path d="m-54.70085-47.93479c0-1.79447.46134-3.51545 1.28252-4.78433s1.93495-1.98173 3.09627-1.98173h100.64412c1.16133 0 2.27509.71285 3.09627 1.98173s1.28252 2.98986 1.28252 4.78433v95.86958c0 3.7368-1.96045 6.76607-4.37879 6.76607h-100.64412c-2.41834 0-4.37879-3.02927-4.37879-6.76607z" fill="#e5ce72" transform="matrix(5.3 0 0 3.43 320.13 349.6)"/><path d="m-54.70085-35.71169c0-10.48742 3.45599-18.98916 7.71917-18.98916h93.96337c4.26318 0 7.71917 8.50174 7.71917 18.98916v71.42338c0 10.48742-3.45599 18.98916-7.71917 18.98916h-93.96337c-4.26318 0-7.71917-8.50174-7.71917-18.98916z" fill="#c7a156" transform="matrix(2.77 0 0 1.12 181.73682415 161.976068)"/></svg>
@@ -16,10 +17,6 @@ fi
 '');
 	mireaweek = (pkgs.writeShellScript "mireaweek"
 ''
-
-
-
-
 # TODO what if it's sunday????
 if [ "$(date +%W)" -lt "$(date --date="09 Feb" +%W)" ]; then
 	echo "Зимняя сессия или новогодние каникулы"
@@ -57,11 +54,6 @@ in
 	enable = true;
 	layout = "us,ru";
 	xkbOptions = "grp:alt_shift_toggle";
-  };
-  services.udiskie = {
-	enable = true;
-	notify = false;
-	tray = "never";
   };
   xdg.desktopEntries = {
 	"Poweroff" = {
@@ -235,7 +227,7 @@ systray_monitor = 1
 
 #-------------------------------------
 button = new
-button_lclick_command = ${pkgs.jgmenu}/bin/jgmenu_run
+button_lclick_command = ${jgmenu_custom}/bin/jgmenu_run
 button_icon = ${config.home.homeDirectory}/.wallpaper.svg
 
 separator = new
