@@ -2,12 +2,12 @@
 let
 	localDir = "${config.home.homeDirectory}/.local";
 	localRun = "${localDir}/run";
-	dropbear_init = (pkgs.writeShellScriptBin "dropbear_init"
+	dropbear_init = (pkgs.writeShellScript "dropbear_init"
 ''
 if [ ! -e $HOME/.config/dropbear ]; then mkdir -p $HOME/.config/dropbear; fi
 if [ ! -e $HOME/.config/dropbear/dropbear_rsa_host_key ]; then ${pkgs.dropbear}/bin/dropbearkey -t rsa -f $HOME/.config/dropbear/dropbear_rsa_host_key; fi
 '');
-	mysqld_init = (pkgs.writeShellScriptBin "mysqld_init_table"
+	mysqld_init = (pkgs.writeShellScript "mysqld_init_table"
 ''
 mkdir -p ${config.home.homeDirectory}/.local ${localRun} ${localDir}/lib ${localDir}/lib/mysql
 if [ ! -f ${localRun}/mysqld.sock ]; then
@@ -69,7 +69,7 @@ in {
     liberation_ttf
     libreoffice
     mysql80
-    (pkgs.callPackage ./simintech.nix {})
+    #(pkgs.callPackage ./simintech.nix {})
     dbeaver
     mysql-workbench
    # staruml
@@ -345,28 +345,9 @@ user = root
 
   home.file.".ssh/authorized_keys".text = ''
 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCyBYo/E/FkFZVABzMixLS2TWaipfN5T24y8f+E6Px1t+IG8PLnQ38dLJiCR8k971DOycLuJUfKWsC06BK3XLWTO0+PmpfGKNT4NI6dwP2REl/umaignP/QQSs2w9Ff49WqPjIYTSmATTsCNZSVB0VtM0eJ+Y9Ff4CXb1frtt4GYztk6XB3jc3TxV72qzB0g6DqrHkf6pT5YAq2UeuFGZYSZCqBvVXCGcvKHkO1KBubuo95itVA5XbzK3INQTZpQowbtK4ULhUYlaGBcX5tYq1bdiTCDlTcLt6MfxYfFHSFiHbJOzdGPd+mXM7urOQhq49uQOf07dHt9qAzQHajItQb+X3FOgyFt4n6Y9Q37gn/6KC3PH1zClldq9DtgttuG/Xk15q+uvCldji9YIgb80aRHBIp6DY8PlYodmGGesBLiBMGQ7hgKupfkqszjfMkxnMYIkZodUCQVgaqsxsEQ7lD84JJMgBY8HkNLxKhy+6dP6kTc4vTtrpjezq/Ph95PFE= bednov@kafpi-108-1-mainserver2''; # stupid way but it works!!!!
-  home.file.".profile".enable = ! astra;
-  home.file.".profile".text = ''
-    if [ -n "$BASH_VERSION" ]; then
-        # include .bashrc if it exists
-        if [ -f "$HOME/.bashrc" ]; then
-    	. "$HOME/.bashrc"
-        fi
-    fi
-
-    if [ -d "$HOME/bin" ]; then PATH="$HOME/bin:$PATH"; fi
-    if [ -d "$HOME/.local/bin" ]; then PATH="$HOME/.local/bin:$PATH"; fi
-
-    #export PATH="$PATH:/home/student/.local/share/JetBrains/Toolbox/scripts"
-
-
-    if [ -e /home/student/.nix-profile/etc/profile.d/nix.sh ]; then . /home/student/.nix-profile/etc/profile.d/nix.sh; fi # added by Nix installer
-
-    if [ -e /home/student/.local/bin/nix-user-chroot ]; then
-            if [ -z "$NIX_CONF_DIR" ]; then
-                    nix-user-chroot ~/.nix bash -l
-            fi
-    fi
+  home.file.".profile.sh".enable = true;
+  home.file.".profile.sh".text = ''
+if [ -e /home/student/.nix-profile/etc/profile.d/nix.sh ]; then . /home/student/.nix-profile/etc/profile.d/nix.sh; fi # added by Nix installer
 
 . "$HOME/.nix-profile/etc/profile.d/hm-session-vars.sh"
 export XDG_DATA_DIRS="$HOME/.nix-profile/share"
