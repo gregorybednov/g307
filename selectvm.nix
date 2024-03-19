@@ -11,7 +11,7 @@ stdenv.mkDerivation rec {
   pname = "selectvm";
   version = "0.0.1";
 
-  src = /home/student/vmmenu;
+  src = ./.;
   nativeBuildInputs = [
     pkgs.ghc
   ];
