@@ -16,7 +16,7 @@ makeCom :: String -> String
 makeCom x
     | x == "Linux"     = fullScreenVM ++ "Linux"
     | x == "Windows"   = fullScreenVM ++ "\"УВМ\\ -\\ Windows\\ v1\""
-    | x == "Выключить" = "systemctl poweroff"
+    | x == "Power"     = "systemctl poweroff"
     | otherwise = ""
 
 main :: IO ()
